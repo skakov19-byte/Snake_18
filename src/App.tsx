@@ -180,7 +180,7 @@ function App() {
             </div>
             <h2 className="text-2xl font-bold text-white mb-2">Ready to Play?</h2>
             <p className="text-slate-400 text-sm mb-6 text-center px-8">
-              Guide the snake to eat apples! Use arrow keys, WASD, or swipe
+              The snake wraps around edges — don't bite yourself! 🍎
             </p>
             <button
               onClick={startGame}

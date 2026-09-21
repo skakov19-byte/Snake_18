@@ -102,12 +102,11 @@ export function useSnakeGame() {
         break;
     }
 
-    // Check wall collision
-    if (newHead.x < 0 || newHead.x >= GRID_SIZE || newHead.y < 0 || newHead.y >= GRID_SIZE) {
-      setGameState('gameover');
-      clearGameLoop();
-      return;
-    }
+    // Wrap around walls — snake passes through to the other side
+    newHead = {
+      x: (newHead.x + GRID_SIZE) % GRID_SIZE,
+      y: (newHead.y + GRID_SIZE) % GRID_SIZE,
+    };
 
     // Check self collision (exclude tail since it will move)
     const willEat = newHead.x === currentFood.x && newHead.y === currentFood.y;
