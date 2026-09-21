@@ -1,11 +1,13 @@
 import { useEffect, useCallback, useMemo } from 'react';
 import { useSnakeGame, Direction, Difficulty } from './hooks/useSnakeGame';
 import { useTouchControls } from './hooks/useTouchControls';
+import { SnakeHead, SnakeBody, SnakeTail, Apple } from './components/GameSprites';
 
 function App() {
   const {
     snake,
     food,
+    direction,
     gameState,
     score,
     highScore,
@@ -72,48 +74,51 @@ function App() {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [handleKeyDown]);
 
-  // Build grid cells
+  // Build grid cells with snake sprites and apple
   const gridCells = useMemo(() => {
     const cells: JSX.Element[] = [];
-    const snakeSet = new Set(snake.map(s => `${s.x},${s.y}`));
-    const headKey = `${snake[0].x},${snake[0].y}`;
+    const snakeMap = new Map<string, number>();
+    snake.forEach((s, i) => snakeMap.set(`${s.x},${s.y}`, i));
     const foodKey = `${food.x},${food.y}`;
-    const tailKey = `${snake[snake.length - 1].x},${snake[snake.length - 1].y}`;
 
     for (let y = 0; y < gridSize; y++) {
       for (let x = 0; x < gridSize; x++) {
         const key = `${x},${y}`;
-        const isHead = key === headKey;
-        const isTail = key === tailKey && snake.length > 1;
-        const isBody = snakeSet.has(key) && !isHead && !isTail;
+        const snakeIndex = snakeMap.get(key);
         const isFood = key === foodKey;
+        const isHead = snakeIndex === 0;
+        const isTail = snakeIndex === snake.length - 1 && snake.length > 1;
+        const isBody = snakeIndex !== undefined && !isHead && !isTail;
 
-        let cellClass = 'w-full h-full rounded-sm transition-all duration-75 ';
+        let content = null;
+        let cellBg = 'bg-slate-800/30';
 
         if (isHead) {
-          cellClass += 'bg-emerald-400 shadow-lg shadow-emerald-400/50 scale-110 z-10';
+          content = <SnakeHead direction={direction} />;
+          cellBg = '';
         } else if (isBody) {
-          cellClass += 'bg-emerald-500/90 rounded-sm';
+          content = <SnakeBody index={snakeIndex!} total={snake.length} />;
+          cellBg = '';
         } else if (isTail) {
-          cellClass += 'bg-emerald-600/70 rounded-sm';
+          content = <SnakeTail />;
+          cellBg = '';
         } else if (isFood) {
-          cellClass += 'bg-rose-400 rounded-full animate-pulse shadow-lg shadow-rose-400/50 scale-90';
-        } else {
-          cellClass += 'bg-slate-800/40';
+          content = <Apple />;
+          cellBg = '';
         }
 
         cells.push(
           <div
             key={key}
-            className="p-[1px] aspect-square"
+            className={`p-[1px] aspect-square ${cellBg} rounded-sm transition-colors duration-100`}
           >
-            <div className={cellClass} />
+            {content}
           </div>
         );
       }
     }
     return cells;
-  }, [snake, food, gridSize]);
+  }, [snake, food, direction, gridSize]);
 
   const difficulties: { value: Difficulty; label: string; color: string }[] = [
     { value: 'easy', label: 'Easy', color: 'bg-green-500' },
@@ -165,10 +170,17 @@ function App() {
         {/* Overlay for idle state */}
         {gameState === 'idle' && (
           <div className="absolute inset-0 bg-slate-900/85 backdrop-blur-sm flex flex-col items-center justify-center rounded-2xl animate-fade-in">
-            <div className="text-6xl mb-4">🐍</div>
+            <div className="flex items-center gap-3 mb-4">
+              <img 
+                src="https://image.qwenlm.ai/generated-images/0c886763-0a8c-462e-a3af-a2cef5d9971d/_result.png" 
+                alt="Snake" 
+                className="w-16 h-16 object-contain"
+              />
+              <span className="text-4xl">🍎</span>
+            </div>
             <h2 className="text-2xl font-bold text-white mb-2">Ready to Play?</h2>
             <p className="text-slate-400 text-sm mb-6 text-center px-8">
-              Use arrow keys, WASD, or swipe to control the snake
+              Guide the snake to eat apples! Use arrow keys, WASD, or swipe
             </p>
             <button
               onClick={startGame}
@@ -208,6 +220,9 @@ function App() {
           <div className="absolute inset-0 bg-slate-900/85 backdrop-blur-sm flex flex-col items-center justify-center rounded-2xl animate-fade-in">
             <div className="text-5xl mb-4">💀</div>
             <h2 className="text-2xl font-bold text-rose-400 mb-2">Game Over!</h2>
+            <p className="text-slate-300 text-lg mb-1">
+              Apples eaten: <span className="font-bold text-emerald-400">{Math.floor(score / 10)}</span> 🍎
+            </p>
             <p className="text-slate-300 text-lg mb-1">Score: <span className="font-bold text-emerald-400">{score}</span></p>
             {score >= highScore && score > 0 && (
               <p className="text-amber-400 text-sm font-bold mb-4 animate-bounce">🏆 New High Score!</p>
