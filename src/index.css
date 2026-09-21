@@ -32,19 +32,24 @@
   user-select: none;
 }
 
-/* Smooth scrollbar for mobile */
-html {
+/* Fixed viewport - no scrolling */
+html, body {
   overflow: hidden;
   height: 100%;
+  width: 100%;
+  position: fixed;
+  margin: 0;
+  padding: 0;
 }
 
+/* Prevent pull-to-refresh and bounce on mobile */
 body {
-  overflow: auto;
-  height: 100%;
+  overscroll-behavior: none;
   -webkit-overflow-scrolling: touch;
 }
 
-/* Prevent pull-to-refresh on mobile */
-body {
-  overscroll-behavior: none;
+/* Ensure proper viewport height on mobile */
+#root {
+  height: 100%;
+  width: 100%;
 }
