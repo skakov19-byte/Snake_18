@@ -1,4 +1,4 @@
-import { useEffect, useCallback, useMemo } from 'react';
+import { useEffect, useCallback, useMemo, useRef } from 'react';
 import { useSnakeGame, Direction, Difficulty, PowerUpType } from './hooks/useSnakeGame';
 import { useTouchControls } from './hooks/useTouchControls';
 import { 
@@ -10,13 +10,6 @@ import {
   LifePowerUp,
   BonusApple
 } from './components/GameSprites';
-
-// Level images
-const LEVEL_IMAGES = [
-  'https://image.qwenlm.ai/generated-images/056c1ff8-4e51-49da-8702-6c9f5f722c0d/_result.png',
-  'https://image.qwenlm.ai/generated-images/99cc2f6c-2082-41d1-b7f2-751523218646/_result.png',
-  'https://image.qwenlm.ai/generated-images/12b19e29-d4c7-4083-ac6d-72631696e135/_result.png',
-];
 
 function App() {
   const {
@@ -33,13 +26,19 @@ function App() {
     lives,
     level,
     revealedCells,
+    customImages,
+    allLevelImages,
     startGame,
     togglePause,
     restart,
     nextLevel,
     changeDirection,
     changeDifficulty,
+    addCustomImage,
+    removeCustomImage,
   } = useSnakeGame();
+
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const touchRef = useTouchControls(changeDirection, gameState === 'playing');
 
@@ -96,6 +95,36 @@ function App() {
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [handleKeyDown]);
+
+  // Handle image upload
+  const handleImageUpload = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    // Check file type
+    if (!file.type.startsWith('image/')) {
+      alert('Please upload an image file');
+      return;
+    }
+
+    // Check file size (max 2MB)
+    if (file.size > 2 * 1024 * 1024) {
+      alert('Image size must be less than 2MB');
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const result = event.target?.result as string;
+      addCustomImage(result);
+    };
+    reader.readAsDataURL(file);
+
+    // Reset input
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
+  }, [addCustomImage]);
 
   const getPowerUpComponent = (type: PowerUpType) => {
     switch (type) {
@@ -170,7 +199,7 @@ function App() {
   const revealedCount = revealedCells.size;
   const progress = Math.round((revealedCount / totalCells) * 100);
 
-  const currentLevelImage = LEVEL_IMAGES[(level - 1) % LEVEL_IMAGES.length];
+  const currentLevelImage = allLevelImages[(level - 1) % allLevelImages.length];
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 flex flex-col items-center justify-center p-4 select-none overflow-hidden">
@@ -296,11 +325,16 @@ function App() {
               <span className="text-4xl">🍎</span>
             </div>
             <h2 className="text-2xl font-bold text-white mb-2">Ready to Play?</h2>
-            <p className="text-slate-400 text-sm mb-6 text-center px-8">
+            <p className="text-slate-400 text-sm mb-4 text-center px-8">
               🍎 Regular apple = 1 cell revealed<br/>
               ⭐ Golden apple = 5 cells revealed!<br/>
               Complete the picture to advance 🖼️
             </p>
+            {allLevelImages.length > 3 && (
+              <p className="text-purple-400 text-xs mb-4 text-center">
+                🎨 {allLevelImages.length} levels available!
+              </p>
+            )}
             <button
               onClick={startGame}
               className="px-8 py-3 bg-gradient-to-r from-emerald-500 to-cyan-500 text-white font-bold rounded-xl hover:scale-105 active:scale-95 transition-transform shadow-lg shadow-emerald-500/30"
@@ -394,6 +428,48 @@ function App() {
 
       {/* Controls */}
       <div className="w-full max-w-lg mt-4 space-y-3">
+        {/* Custom Images Section */}
+        {(gameState === 'idle' || gameState === 'gameover') && (
+          <div className="bg-slate-800/80 backdrop-blur rounded-xl p-4 border border-slate-700/50">
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="text-sm font-medium text-slate-300">📸 Custom Images</h3>
+              <label className="px-3 py-1.5 bg-gradient-to-r from-purple-500 to-pink-500 text-white text-xs font-medium rounded-lg cursor-pointer hover:scale-105 active:scale-95 transition-transform">
+                + Add Image
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="image/*"
+                  onChange={handleImageUpload}
+                  className="hidden"
+                />
+              </label>
+            </div>
+            
+            {customImages.length > 0 ? (
+              <div className="grid grid-cols-4 gap-2">
+                {customImages.map((img, index) => (
+                  <div key={index} className="relative group aspect-square rounded-lg overflow-hidden border border-slate-600">
+                    <img src={img} alt={`Custom ${index + 1}`} className="w-full h-full object-cover" />
+                    <button
+                      onClick={() => removeCustomImage(index)}
+                      className="absolute top-1 right-1 w-5 h-5 bg-red-500 text-white text-xs rounded-full opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center"
+                    >
+                      ×
+                    </button>
+                    <div className="absolute bottom-0 left-0 right-0 bg-black/60 text-white text-xs text-center py-0.5">
+                      Level {3 + index + 1}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p className="text-xs text-slate-500 text-center py-2">
+                Add your own images to create custom levels!
+              </p>
+            )}
+          </div>
+        )}
+
         {/* Action Buttons */}
         <div className="flex items-center justify-center gap-3">
           {gameState === 'playing' && (

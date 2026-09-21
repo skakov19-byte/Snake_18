@@ -28,6 +28,13 @@ const SPEED_MAP: Record<Difficulty, number> = {
   hard: 75,
 };
 
+// Default level images
+const DEFAULT_LEVEL_IMAGES = [
+  'https://image.qwenlm.ai/generated-images/056c1ff8-4e51-49da-8702-6c9f5f722c0d/_result.png',
+  'https://image.qwenlm.ai/generated-images/99cc2f6c-2082-41d1-b7f2-751523218646/_result.png',
+  'https://image.qwenlm.ai/generated-images/12b19e29-d4c7-4083-ac6d-72631696e135/_result.png',
+];
+
 const POWERUP_DURATION = 8000;
 const SLOW_EFFECT_DURATION = 5000;
 const POWERUP_SPAWN_CHANCE = 0.35;
@@ -73,6 +80,14 @@ export function useSnakeGame() {
   const [lastEaten, setLastEaten] = useState<number>(0);
   const [level, setLevel] = useState(1);
   const [revealedCells, setRevealedCells] = useState<Set<string>>(new Set());
+  const [customImages, setCustomImages] = useState<string[]>(() => {
+    try {
+      const saved = localStorage.getItem('snake-custom-images');
+      return saved ? JSON.parse(saved) : [];
+    } catch {
+      return [];
+    }
+  });
 
   const directionRef = useRef<Direction>('RIGHT');
   const nextDirectionRef = useRef<Direction | null>(null);
@@ -442,6 +457,30 @@ export function useSnakeGame() {
     setDifficulty(newDifficulty);
   }, []);
 
+  const addCustomImage = useCallback((imageDataUrl: string) => {
+    setCustomImages(prev => {
+      const updated = [...prev, imageDataUrl];
+      try {
+        localStorage.setItem('snake-custom-images', JSON.stringify(updated));
+      } catch { /* ignore */ }
+      return updated;
+    });
+  }, []);
+
+  const removeCustomImage = useCallback((index: number) => {
+    setCustomImages(prev => {
+      const updated = prev.filter((_, i) => i !== index);
+      try {
+        localStorage.setItem('snake-custom-images', JSON.stringify(updated));
+      } catch { /* ignore */ }
+      return updated;
+    });
+  }, []);
+
+  const getAllLevelImages = useCallback(() => {
+    return [...DEFAULT_LEVEL_IMAGES, ...customImages];
+  }, [customImages]);
+
   useEffect(() => {
     if (gameState === 'playing') {
       startGameLoop();
@@ -472,11 +511,15 @@ export function useSnakeGame() {
     lives,
     level,
     revealedCells,
+    customImages,
+    allLevelImages: getAllLevelImages(),
     startGame,
     togglePause,
     restart,
     nextLevel,
     changeDirection,
     changeDifficulty,
+    addCustomImage,
+    removeCustomImage,
   };
 }
