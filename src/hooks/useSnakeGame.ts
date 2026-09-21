@@ -29,7 +29,7 @@ const SPEED_MAP: Record<Difficulty, number> = {
 };
 
 // Default level images
-const DEFAULT_LEVEL_IMAGES = [
+export const DEFAULT_LEVEL_IMAGES = [
   'https://image.qwenlm.ai/generated-images/056c1ff8-4e51-49da-8702-6c9f5f722c0d/_result.png',
   'https://image.qwenlm.ai/generated-images/99cc2f6c-2082-41d1-b7f2-751523218646/_result.png',
   'https://image.qwenlm.ai/generated-images/12b19e29-d4c7-4083-ac6d-72631696e135/_result.png',
@@ -478,7 +478,12 @@ export function useSnakeGame() {
   }, []);
 
   const getAllLevelImages = useCallback(() => {
-    return [...DEFAULT_LEVEL_IMAGES, ...customImages];
+    // If custom images exist, use only them (starting from level 1)
+    // Otherwise, use default images
+    if (customImages.length > 0) {
+      return customImages;
+    }
+    return DEFAULT_LEVEL_IMAGES;
   }, [customImages]);
 
   useEffect(() => {

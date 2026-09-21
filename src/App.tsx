@@ -1,5 +1,5 @@
 import { useEffect, useCallback, useMemo, useRef } from 'react';
-import { useSnakeGame, Direction, Difficulty, PowerUpType } from './hooks/useSnakeGame';
+import { useSnakeGame, Direction, Difficulty, PowerUpType, DEFAULT_LEVEL_IMAGES } from './hooks/useSnakeGame';
 import { useTouchControls } from './hooks/useTouchControls';
 import { 
   SnakeHead, 
@@ -330,11 +330,9 @@ function App() {
               ⭐ Golden apple = 5 cells revealed!<br/>
               Complete the picture to advance 🖼️
             </p>
-            {allLevelImages.length > 3 && (
-              <p className="text-purple-400 text-xs mb-4 text-center">
-                🎨 {allLevelImages.length} levels available!
-              </p>
-            )}
+            <p className="text-purple-400 text-xs mb-4 text-center">
+              🎨 {allLevelImages.length} {allLevelImages.length === 1 ? 'level' : 'levels'} available!
+            </p>
             <button
               onClick={startGame}
               className="px-8 py-3 bg-gradient-to-r from-emerald-500 to-cyan-500 text-white font-bold rounded-xl hover:scale-105 active:scale-95 transition-transform shadow-lg shadow-emerald-500/30"
@@ -432,7 +430,7 @@ function App() {
         {(gameState === 'idle' || gameState === 'gameover') && (
           <div className="bg-slate-800/80 backdrop-blur rounded-xl p-4 border border-slate-700/50">
             <div className="flex items-center justify-between mb-3">
-              <h3 className="text-sm font-medium text-slate-300">📸 Custom Images</h3>
+              <h3 className="text-sm font-medium text-slate-300">📸 Level Images</h3>
               <label className="px-3 py-1.5 bg-gradient-to-r from-purple-500 to-pink-500 text-white text-xs font-medium rounded-lg cursor-pointer hover:scale-105 active:scale-95 transition-transform">
                 + Add Image
                 <input
@@ -446,26 +444,45 @@ function App() {
             </div>
             
             {customImages.length > 0 ? (
-              <div className="grid grid-cols-4 gap-2">
-                {customImages.map((img, index) => (
-                  <div key={index} className="relative group aspect-square rounded-lg overflow-hidden border border-slate-600">
-                    <img src={img} alt={`Custom ${index + 1}`} className="w-full h-full object-cover" />
-                    <button
-                      onClick={() => removeCustomImage(index)}
-                      className="absolute top-1 right-1 w-5 h-5 bg-red-500 text-white text-xs rounded-full opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center"
-                    >
-                      ×
-                    </button>
-                    <div className="absolute bottom-0 left-0 right-0 bg-black/60 text-white text-xs text-center py-0.5">
-                      Level {3 + index + 1}
+              <>
+                <p className="text-xs text-purple-400 mb-2">✨ Using your custom images</p>
+                <div className="grid grid-cols-4 gap-2">
+                  {customImages.map((img, index) => (
+                    <div key={index} className="relative group aspect-square rounded-lg overflow-hidden border-2 border-purple-500/50">
+                      <img src={img} alt={`Custom ${index + 1}`} className="w-full h-full object-cover" />
+                      <button
+                        onClick={() => removeCustomImage(index)}
+                        className="absolute top-1 right-1 w-5 h-5 bg-red-500 text-white text-xs rounded-full opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center"
+                      >
+                        ×
+                      </button>
+                      <div className="absolute bottom-0 left-0 right-0 bg-black/70 text-white text-xs text-center py-0.5 font-medium">
+                        Level {index + 1}
+                      </div>
                     </div>
-                  </div>
-                ))}
-              </div>
+                  ))}
+                </div>
+                <p className="text-xs text-slate-500 mt-2 text-center">
+                  Delete all to use default images
+                </p>
+              </>
             ) : (
-              <p className="text-xs text-slate-500 text-center py-2">
-                Add your own images to create custom levels!
-              </p>
+              <>
+                <p className="text-xs text-slate-400 mb-2">🎮 Using default images</p>
+                <div className="grid grid-cols-3 gap-2">
+                  {DEFAULT_LEVEL_IMAGES.map((img, index) => (
+                    <div key={index} className="relative aspect-square rounded-lg overflow-hidden border border-slate-600">
+                      <img src={img} alt={`Default ${index + 1}`} className="w-full h-full object-cover" />
+                      <div className="absolute bottom-0 left-0 right-0 bg-black/70 text-white text-xs text-center py-0.5 font-medium">
+                        Level {index + 1}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+                <p className="text-xs text-slate-500 mt-2 text-center">
+                  Add your own images to replace defaults
+                </p>
+              </>
             )}
           </div>
         )}
