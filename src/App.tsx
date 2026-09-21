@@ -204,7 +204,7 @@ function App() {
   const currentLevelImage = allLevelImages[(level - 1) % allLevelImages.length];
 
   return (
-    <div className="h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 flex flex-col items-center select-none overflow-hidden">
+    <div className="h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 flex flex-col items-center select-none overflow-y-auto overflow-x-hidden">
       {/* Header - Compact on mobile */}
       <div className="w-full max-w-lg px-3 pt-2 pb-1 md:px-4 md:pt-4 md:pb-2">
         <h1 className="text-xl md:text-4xl font-bold text-center text-transparent bg-clip-text bg-gradient-to-r from-emerald-400 to-cyan-400 mb-1 md:mb-4">
@@ -430,12 +430,12 @@ function App() {
 
       {/* Controls - Compact on mobile, hidden during gameplay on mobile */}
       <div className="w-full max-w-lg px-3 py-2 md:px-4 md:py-4 md:space-y-3 space-y-1 md:space-y-3">
-        {/* Custom Images Section - Desktop only */}
+        {/* Custom Images Section */}
         {(gameState === 'idle' || gameState === 'gameover') && (
-          <div className="hidden md:block bg-slate-800/80 backdrop-blur rounded-xl p-4 border border-slate-700/50">
-            <h3 className="text-sm font-medium text-slate-300 mb-3">📸 Level Images (click to change)</h3>
+          <div className="bg-slate-800/80 backdrop-blur rounded-lg md:rounded-xl p-2 md:p-4 border border-slate-700/50">
+            <h3 className="text-xs md:text-sm font-medium text-slate-300 mb-1 md:mb-3">📸 Level Images</h3>
             
-            <div className="grid grid-cols-4 gap-2">
+            <div className="grid grid-cols-4 md:grid-cols-4 gap-1 md:gap-2">
               {allLevelImages.map((img, index) => {
                 const isCustom = customImages[index] != null;
                 return (
@@ -450,21 +450,21 @@ function App() {
                         }}
                         className="hidden"
                       />
-                      <div className={`aspect-square rounded-lg overflow-hidden border-2 transition-all ${
-                        isCustom ? 'border-purple-500/50 hover:border-purple-400' : 'border-slate-600 hover:border-slate-400'
+                      <div className={`aspect-square rounded-md md:rounded-lg overflow-hidden border-2 transition-all ${
+                        isCustom ? 'border-purple-500/50 active:border-purple-400' : 'border-slate-600 active:border-slate-400'
                       }`}>
                         <img src={img} alt={`Level ${index + 1}`} className="w-full h-full object-cover" />
-                        {/* Hover overlay */}
-                        <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                        {/* Hover/tap overlay - desktop only */}
+                        <div className="hidden md:block absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
                           <span className="text-white text-xs font-medium">Change</span>
                         </div>
                       </div>
-                      <div className="absolute bottom-0 left-0 right-0 bg-black/70 text-white text-xs text-center py-0.5 font-medium">
-                        Level {index + 1}
+                      <div className="absolute bottom-0 left-0 right-0 bg-black/70 text-white text-[10px] md:text-xs text-center py-0.5 font-medium">
+                        L{index + 1}
                       </div>
                       {isCustom && (
-                        <div className="absolute top-0 right-0 bg-purple-500 text-white text-[10px] px-1 rounded-bl">
-                          Custom
+                        <div className="absolute top-0 right-0 bg-purple-500 text-white text-[8px] md:text-[10px] px-0.5 md:px-1 rounded-bl">
+                          ✎
                         </div>
                       )}
                     </label>
@@ -474,7 +474,7 @@ function App() {
                           e.preventDefault();
                           setCustomImageForLevel(index, null);
                         }}
-                        className="absolute top-1 right-1 w-5 h-5 bg-red-500 text-white text-xs rounded-full opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center z-10"
+                        className="absolute top-0.5 right-0.5 w-4 h-4 md:w-5 md:h-5 bg-red-500 text-white text-[10px] md:text-xs rounded-full opacity-80 md:opacity-0 md:group-hover:opacity-100 transition-opacity flex items-center justify-center z-10"
                         title="Reset to default"
                       >
                         ×
@@ -495,17 +495,19 @@ function App() {
                   }}
                   className="hidden"
                 />
-                <div className="aspect-square rounded-lg border-2 border-dashed border-slate-600 hover:border-purple-500 flex items-center justify-center transition-colors">
+                <div className="aspect-square rounded-md md:rounded-lg border-2 border-dashed border-slate-600 active:border-purple-500 md:hover:border-purple-500 flex items-center justify-center transition-colors">
                   <div className="text-center">
-                    <div className="text-2xl text-slate-500">+</div>
-                    <div className="text-[10px] text-slate-500">Add Level</div>
+                    <div className="text-xl md:text-2xl text-slate-500">+</div>
+                    <div className="text-[8px] md:text-[10px] text-slate-500">Add</div>
                   </div>
                 </div>
               </label>
             </div>
             
-            <p className="text-xs text-slate-500 mt-2 text-center">
-              Click any image to change it • Hover to see options
+            <p className="text-[10px] md:text-xs text-slate-500 mt-1 md:mt-2 text-center">
+              <span className="hidden md:inline">Click any image to change it • </span>
+              <span className="md:hidden">Tap image to change • </span>
+              <span className="text-purple-400">✎</span> = custom
             </p>
           </div>
         )}
