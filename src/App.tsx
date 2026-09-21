@@ -1,7 +1,16 @@
 import { useEffect, useCallback, useMemo } from 'react';
-import { useSnakeGame, Direction, Difficulty } from './hooks/useSnakeGame';
+import { useSnakeGame, Direction, Difficulty, PowerUpType } from './hooks/useSnakeGame';
 import { useTouchControls } from './hooks/useTouchControls';
-import { SnakeHead, SnakeBody, SnakeTail, Apple } from './components/GameSprites';
+import { 
+  SnakeHead, 
+  SnakeBody, 
+  SnakeTail, 
+  Apple,
+  SlowPowerUp,
+  ShieldPowerUp,
+  LifePowerUp,
+  BonusApple
+} from './components/GameSprites';
 
 function App() {
   const {
@@ -13,6 +22,9 @@ function App() {
     highScore,
     difficulty,
     gridSize,
+    powerUps,
+    activeEffects,
+    lives,
     startGame,
     togglePause,
     restart,
@@ -74,18 +86,31 @@ function App() {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [handleKeyDown]);
 
-  // Build grid cells with snake sprites and apple
+  // Get power-up component
+  const getPowerUpComponent = (type: PowerUpType) => {
+    switch (type) {
+      case 'slow': return <SlowPowerUp />;
+      case 'shield': return <ShieldPowerUp />;
+      case 'life': return <LifePowerUp />;
+      case 'bonus': return <BonusApple />;
+    }
+  };
+
+  // Build grid cells with snake sprites, apple, and power-ups
   const gridCells = useMemo(() => {
     const cells: JSX.Element[] = [];
     const snakeMap = new Map<string, number>();
     snake.forEach((s, i) => snakeMap.set(`${s.x},${s.y}`, i));
     const foodKey = `${food.x},${food.y}`;
+    const powerUpMap = new Map<string, PowerUpType>();
+    powerUps.forEach(p => powerUpMap.set(`${p.position.x},${p.position.y}`, p.type));
 
     for (let y = 0; y < gridSize; y++) {
       for (let x = 0; x < gridSize; x++) {
         const key = `${x},${y}`;
         const snakeIndex = snakeMap.get(key);
         const isFood = key === foodKey;
+        const powerUpType = powerUpMap.get(key);
         const isHead = snakeIndex === 0;
         const isTail = snakeIndex === snake.length - 1 && snake.length > 1;
         const isBody = snakeIndex !== undefined && !isHead && !isTail;
@@ -105,6 +130,9 @@ function App() {
         } else if (isFood) {
           content = <Apple />;
           cellBg = '';
+        } else if (powerUpType) {
+          content = getPowerUpComponent(powerUpType);
+          cellBg = '';
         }
 
         cells.push(
@@ -118,13 +146,18 @@ function App() {
       }
     }
     return cells;
-  }, [snake, food, direction, gridSize]);
+  }, [snake, food, direction, gridSize, powerUps]);
 
   const difficulties: { value: Difficulty; label: string; color: string }[] = [
     { value: 'easy', label: 'Easy', color: 'bg-green-500' },
     { value: 'medium', label: 'Medium', color: 'bg-yellow-500' },
     { value: 'hard', label: 'Hard', color: 'bg-red-500' },
   ];
+
+  // Check if effects are active
+  const now = Date.now();
+  const hasSlow = activeEffects.some(e => e.type === 'slow' && e.expiresAt > now);
+  const hasShield = activeEffects.some(e => e.type === 'shield' && e.expiresAt > now);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 flex flex-col items-center justify-center p-4 select-none overflow-hidden">
@@ -145,16 +178,40 @@ function App() {
             <span className="text-2xl font-bold text-amber-400 tabular-nums">{highScore}</span>
           </div>
           <div className="flex flex-col items-center">
-            <span className="text-xs text-slate-400 uppercase tracking-wider">Length</span>
-            <span className="text-2xl font-bold text-cyan-400 tabular-nums">{snake.length}</span>
+            <span className="text-xs text-slate-400 uppercase tracking-wider">Lives</span>
+            <div className="flex gap-1">
+              {Array.from({ length: lives }).map((_, i) => (
+                <span key={i} className="text-xl">❤️</span>
+              ))}
+            </div>
           </div>
         </div>
+
+        {/* Active Effects */}
+        {activeEffects.length > 0 && (
+          <div className="flex items-center justify-center gap-2 mt-2">
+            {hasSlow && (
+              <div className="flex items-center gap-1 px-3 py-1 bg-blue-500/20 border border-blue-500/50 rounded-lg">
+                <span className="text-sm">🐢</span>
+                <span className="text-xs text-blue-300 font-medium">Slow</span>
+              </div>
+            )}
+            {hasShield && (
+              <div className="flex items-center gap-1 px-3 py-1 bg-yellow-500/20 border border-yellow-500/50 rounded-lg">
+                <span className="text-sm">🛡️</span>
+                <span className="text-xs text-yellow-300 font-medium">Shield</span>
+              </div>
+            )}
+          </div>
+        )}
       </div>
 
       {/* Game Board Container */}
       <div
         ref={touchRef}
-        className="relative w-full max-w-lg aspect-square bg-slate-900/80 backdrop-blur rounded-2xl border-2 border-slate-700/50 shadow-2xl shadow-black/50 overflow-hidden touch-none"
+        className={`relative w-full max-w-lg aspect-square bg-slate-900/80 backdrop-blur rounded-2xl border-2 shadow-2xl shadow-black/50 overflow-hidden touch-none transition-all ${
+          hasShield ? 'border-yellow-400/70 shadow-yellow-400/30' : 'border-slate-700/50'
+        }`}
       >
         {/* Grid */}
         <div
@@ -180,7 +237,8 @@ function App() {
             </div>
             <h2 className="text-2xl font-bold text-white mb-2">Ready to Play?</h2>
             <p className="text-slate-400 text-sm mb-6 text-center px-8">
-              The snake wraps around edges — don't bite yourself! 🍎
+              The snake wraps around edges — don't bite yourself! 🍎<br/>
+              Collect power-ups for special abilities! ✨
             </p>
             <button
               onClick={startGame}
@@ -278,6 +336,22 @@ function App() {
               {d.label}
             </button>
           ))}
+        </div>
+
+        {/* Power-ups Legend */}
+        <div className="flex items-center justify-center gap-3 text-xs text-slate-400 mt-2">
+          <span className="flex items-center gap-1">
+            <span className="text-blue-400">🐢</span> Slow
+          </span>
+          <span className="flex items-center gap-1">
+            <span className="text-yellow-400">🛡️</span> Shield
+          </span>
+          <span className="flex items-center gap-1">
+            <span className="text-pink-400">❤️</span> Life
+          </span>
+          <span className="flex items-center gap-1">
+            <span className="text-amber-400">⭐</span> +50
+          </span>
         </div>
 
         {/* Mobile D-Pad */}
