@@ -297,8 +297,9 @@ function App() {
             </div>
             <h2 className="text-2xl font-bold text-white mb-2">Ready to Play?</h2>
             <p className="text-slate-400 text-sm mb-6 text-center px-8">
-              Eat apples to reveal the hidden image!<br/>
-              Complete the picture to advance to the next level 🖼️
+              🍎 Regular apple = 1 cell revealed<br/>
+              ⭐ Golden apple = 5 cells revealed!<br/>
+              Complete the picture to advance 🖼️
             </p>
             <button
               onClick={startGame}
@@ -435,13 +436,16 @@ function App() {
         {/* Power-ups Legend */}
         <div className="flex items-center justify-center gap-3 text-xs text-slate-400 mt-2">
           <span className="flex items-center gap-1">
+            <span className="text-red-400">🍎</span> = 1 cell
+          </span>
+          <span className="flex items-center gap-1">
+            <span className="text-amber-400">⭐</span> = 5 cells
+          </span>
+          <span className="flex items-center gap-1">
             <span className="text-blue-400">🐢</span> Slow
           </span>
           <span className="flex items-center gap-1">
             <span className="text-pink-400">❤️</span> Life
-          </span>
-          <span className="flex items-center gap-1">
-            <span className="text-amber-400">⭐</span> +50
           </span>
         </div>
 

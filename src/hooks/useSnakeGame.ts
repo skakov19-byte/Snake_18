@@ -147,8 +147,7 @@ export function useSnakeGame() {
     });
   }, []);
 
-  const revealRandomCell = useCallback(() => {
-    const totalCells = GRID_SIZE * GRID_SIZE;
+  const revealRandomCells = useCallback((count: number) => {
     const allCells: string[] = [];
     
     for (let y = 0; y < GRID_SIZE; y++) {
@@ -160,18 +159,18 @@ export function useSnakeGame() {
       }
     }
 
-    if (allCells.length === 0) return false;
+    if (allCells.length === 0) return;
 
-    const randomCell = allCells[Math.floor(Math.random() * allCells.length)];
+    // Shuffle and take 'count' cells
+    const shuffled = allCells.sort(() => Math.random() - 0.5);
+    const cellsToReveal = shuffled.slice(0, Math.min(count, allCells.length));
     
     setRevealedCells(prev => {
       const updated = new Set(prev);
-      updated.add(randomCell);
+      cellsToReveal.forEach(cell => updated.add(cell));
       revealedCellsRef.current = updated;
       return updated;
     });
-
-    return true;
   }, []);
 
   const checkLevelComplete = useCallback(() => {
@@ -271,8 +270,8 @@ export function useSnakeGame() {
         return prev;
       });
 
-      // Reveal a random cell
-      revealRandomCell();
+      // Reveal 1 cell for regular apple (10 points)
+      revealRandomCells(1);
 
       // Check if level is complete
       setTimeout(() => {
@@ -323,6 +322,11 @@ export function useSnakeGame() {
               }
               return prev;
             });
+            // Reveal 5 cells for golden apple (50 points)
+            revealRandomCells(5);
+            setTimeout(() => {
+              checkLevelComplete();
+            }, 100);
             break;
         }
       }
@@ -346,7 +350,7 @@ export function useSnakeGame() {
         return updated;
       });
     }
-  }, [clearGameLoop, addEffect, spawnPowerUp, revealRandomCell, checkLevelComplete]);
+  }, [clearGameLoop, addEffect, spawnPowerUp, revealRandomCells, checkLevelComplete]);
 
   const startGameLoop = useCallback(() => {
     clearGameLoop();
