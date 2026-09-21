@@ -31,11 +31,19 @@ const CELLS_REVEALED_MAP: Record<Difficulty, number> = {
   hard: 1,    // 1 cell
 };
 
-// Default level images
+// Default level images from public/photo folder
+// Files should be named: level1.jpg, level2.jpg, level3.jpg, etc.
 export const DEFAULT_LEVEL_IMAGES = [
+  '/photo/level1.jpg',
+  '/photo/level2.jpg',
+  '/photo/level3.jpg',
+];
+
+// Fallback images in case local files are not found
+export const FALLBACK_IMAGES = [
+  'https://image.qwenlm.ai/generated-images/98919132-e3cd-4182-ab2f-49398de6c40b/_result.png',
   'https://image.qwenlm.ai/generated-images/056c1ff8-4e51-49da-8702-6c9f5f722c0d/_result.png',
   'https://image.qwenlm.ai/generated-images/99cc2f6c-2082-41d1-b7f2-751523218646/_result.png',
-  'https://image.qwenlm.ai/generated-images/12b19e29-d4c7-4083-ac6d-72631696e135/_result.png',
 ];
 
 const POWERUP_DURATION = 8000;

@@ -1,5 +1,5 @@
 import { useEffect, useCallback, useMemo, useRef } from 'react';
-import { useSnakeGame, Direction, Difficulty, PowerUpType, DEFAULT_LEVEL_IMAGES } from './hooks/useSnakeGame';
+import { useSnakeGame, Direction, Difficulty, PowerUpType, DEFAULT_LEVEL_IMAGES, FALLBACK_IMAGES } from './hooks/useSnakeGame';
 import { useTouchControls } from './hooks/useTouchControls';
 import { 
   SnakeHead, 
@@ -320,11 +320,7 @@ function App() {
         {gameState === 'idle' && (
           <div className="absolute inset-0 bg-slate-900/85 backdrop-blur-sm flex flex-col items-center justify-center rounded-xl md:rounded-2xl animate-fade-in p-4">
             <div className="flex items-center gap-2 md:gap-3 mb-2 md:mb-4">
-              <img 
-                src="https://image.qwenlm.ai/generated-images/0c886763-0a8c-462e-a3af-a2cef5d9971d/_result.png" 
-                alt="Snake" 
-                className="w-12 h-12 md:w-16 md:h-16 object-contain"
-              />
+              <span className="text-5xl md:text-6xl">🐍</span>
               <span className="text-3xl md:text-4xl">🍎</span>
             </div>
             <h2 className="text-xl md:text-2xl font-bold text-white mb-1 md:mb-2">Ready to Play?</h2>
@@ -384,6 +380,13 @@ function App() {
                 src={currentLevelImage} 
                 alt={`Level ${level} complete`}
                 className="w-full h-full object-cover"
+                onError={(e) => {
+                  const target = e.target as HTMLImageElement;
+                  const levelIndex = (level - 1) % FALLBACK_IMAGES.length;
+                  if (target.src !== FALLBACK_IMAGES[levelIndex]) {
+                    target.src = FALLBACK_IMAGES[levelIndex];
+                  }
+                }}
               />
             </div>
             
@@ -453,7 +456,18 @@ function App() {
                       <div className={`aspect-square rounded-md md:rounded-lg overflow-hidden border-2 transition-all ${
                         isCustom ? 'border-purple-500/50 active:border-purple-400' : 'border-slate-600 active:border-slate-400'
                       }`}>
-                        <img src={img} alt={`Level ${index + 1}`} className="w-full h-full object-cover" />
+                        <img 
+                          src={img} 
+                          alt={`Level ${index + 1}`} 
+                          className="w-full h-full object-cover"
+                          onError={(e) => {
+                            // Use fallback image if local file not found
+                            const target = e.target as HTMLImageElement;
+                            if (index < FALLBACK_IMAGES.length && target.src !== FALLBACK_IMAGES[index]) {
+                              target.src = FALLBACK_IMAGES[index];
+                            }
+                          }}
+                        />
                         {/* Hover/tap overlay - desktop only */}
                         <div className="hidden md:block absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
                           <span className="text-white text-xs font-medium">Change</span>
