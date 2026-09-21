@@ -182,47 +182,7 @@ export const SlowPowerUp: React.FC = () => {
   );
 };
 
-// Power-up: Shield
-export const ShieldPowerUp: React.FC = () => {
-  return (
-    <svg viewBox="0 0 100 100" className="w-full h-full animate-pulse">
-      {/* Glow */}
-      <circle cx="50" cy="50" r="45" fill="#eab308" opacity="0.2" />
-      
-      {/* Shield shape */}
-      <path
-        d="M 50 15 L 80 25 L 80 55 Q 80 75 50 90 Q 20 75 20 55 L 20 25 Z"
-        fill="#facc15"
-        stroke="#ca8a04"
-        strokeWidth="2"
-      />
-      <path
-        d="M 50 15 L 80 25 L 80 55 Q 80 75 50 90 Q 20 75 20 55 L 20 25 Z"
-        fill="url(#shieldGradient)"
-      />
-      
-      {/* Inner shield */}
-      <path
-        d="M 50 25 L 72 33 L 72 55 Q 72 70 50 82 Q 28 70 28 55 L 28 33 Z"
-        fill="#fef08a"
-        opacity="0.6"
-      />
-      
-      {/* Star in center */}
-      <path
-        d="M 50 40 L 54 52 L 66 52 L 56 60 L 60 72 L 50 64 L 40 72 L 44 60 L 34 52 L 46 52 Z"
-        fill="#ca8a04"
-      />
-      
-      <defs>
-        <radialGradient id="shieldGradient" cx="40%" cy="30%">
-          <stop offset="0%" stopColor="#fef9c3" stopOpacity="0.8" />
-          <stop offset="100%" stopColor="#a16207" stopOpacity="0" />
-        </radialGradient>
-      </defs>
-    </svg>
-  );
-};
+
 
 // Power-up: Extra Life (heart)
 export const LifePowerUp: React.FC = () => {

@@ -7,10 +7,16 @@ import {
   SnakeTail, 
   Apple,
   SlowPowerUp,
-  ShieldPowerUp,
   LifePowerUp,
   BonusApple
 } from './components/GameSprites';
+
+// Level images
+const LEVEL_IMAGES = [
+  'https://image.qwenlm.ai/generated-images/056c1ff8-4e51-49da-8702-6c9f5f722c0d/_result.png',
+  'https://image.qwenlm.ai/generated-images/99cc2f6c-2082-41d1-b7f2-751523218646/_result.png',
+  'https://image.qwenlm.ai/generated-images/12b19e29-d4c7-4083-ac6d-72631696e135/_result.png',
+];
 
 function App() {
   const {
@@ -25,9 +31,12 @@ function App() {
     powerUps,
     activeEffects,
     lives,
+    level,
+    revealedCells,
     startGame,
     togglePause,
     restart,
+    nextLevel,
     changeDirection,
     changeDifficulty,
   } = useSnakeGame();
@@ -75,10 +84,12 @@ function App() {
       if (e.key === 'Enter') {
         if (gameState === 'idle' || gameState === 'gameover') {
           startGame();
+        } else if (gameState === 'levelcomplete') {
+          nextLevel();
         }
       }
     },
-    [gameState, changeDirection, togglePause, restart, startGame]
+    [gameState, changeDirection, togglePause, restart, startGame, nextLevel]
   );
 
   useEffect(() => {
@@ -86,17 +97,15 @@ function App() {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [handleKeyDown]);
 
-  // Get power-up component
   const getPowerUpComponent = (type: PowerUpType) => {
     switch (type) {
       case 'slow': return <SlowPowerUp />;
-      case 'shield': return <ShieldPowerUp />;
       case 'life': return <LifePowerUp />;
       case 'bonus': return <BonusApple />;
     }
   };
 
-  // Build grid cells with snake sprites, apple, and power-ups
+  // Build grid cells
   const gridCells = useMemo(() => {
     const cells: JSX.Element[] = [];
     const snakeMap = new Map<string, number>();
@@ -154,10 +163,14 @@ function App() {
     { value: 'hard', label: 'Hard', color: 'bg-red-500' },
   ];
 
-  // Check if effects are active
   const now = Date.now();
   const hasSlow = activeEffects.some(e => e.type === 'slow' && e.expiresAt > now);
-  const hasShield = activeEffects.some(e => e.type === 'shield' && e.expiresAt > now);
+  
+  const totalCells = gridSize * gridSize;
+  const revealedCount = revealedCells.size;
+  const progress = Math.round((revealedCount / totalCells) * 100);
+
+  const currentLevelImage = LEVEL_IMAGES[(level - 1) % LEVEL_IMAGES.length];
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 flex flex-col items-center justify-center p-4 select-none overflow-hidden">
@@ -174,8 +187,8 @@ function App() {
             <span className="text-2xl font-bold text-emerald-400 tabular-nums">{score}</span>
           </div>
           <div className="flex flex-col items-center">
-            <span className="text-xs text-slate-400 uppercase tracking-wider">Best</span>
-            <span className="text-2xl font-bold text-amber-400 tabular-nums">{highScore}</span>
+            <span className="text-xs text-slate-400 uppercase tracking-wider">Level</span>
+            <span className="text-2xl font-bold text-cyan-400 tabular-nums">{level}</span>
           </div>
           <div className="flex flex-col items-center">
             <span className="text-xs text-slate-400 uppercase tracking-wider">Lives</span>
@@ -187,6 +200,22 @@ function App() {
           </div>
         </div>
 
+        {/* Progress Bar */}
+        {gameState === 'playing' && (
+          <div className="mt-2 bg-slate-800/80 backdrop-blur rounded-xl px-4 py-2 border border-slate-700/50">
+            <div className="flex items-center justify-between mb-1">
+              <span className="text-xs text-slate-400">Image Progress</span>
+              <span className="text-xs text-cyan-400 font-bold">{progress}%</span>
+            </div>
+            <div className="w-full bg-slate-700 rounded-full h-2 overflow-hidden">
+              <div 
+                className="h-full bg-gradient-to-r from-cyan-500 to-emerald-500 transition-all duration-300"
+                style={{ width: `${progress}%` }}
+              />
+            </div>
+          </div>
+        )}
+
         {/* Active Effects */}
         {activeEffects.length > 0 && (
           <div className="flex items-center justify-center gap-2 mt-2">
@@ -196,12 +225,6 @@ function App() {
                 <span className="text-xs text-blue-300 font-medium">Slow</span>
               </div>
             )}
-            {hasShield && (
-              <div className="flex items-center gap-1 px-3 py-1 bg-yellow-500/20 border border-yellow-500/50 rounded-lg">
-                <span className="text-sm">🛡️</span>
-                <span className="text-xs text-yellow-300 font-medium">Shield</span>
-              </div>
-            )}
           </div>
         )}
       </div>
@@ -209,13 +232,50 @@ function App() {
       {/* Game Board Container */}
       <div
         ref={touchRef}
-        className={`relative w-full max-w-lg aspect-square bg-slate-900/80 backdrop-blur rounded-2xl border-2 shadow-2xl shadow-black/50 overflow-hidden touch-none transition-all ${
-          hasShield ? 'border-yellow-400/70 shadow-yellow-400/30' : 'border-slate-700/50'
-        }`}
+        className="relative w-full max-w-lg aspect-square bg-slate-900/80 backdrop-blur rounded-2xl border-2 border-slate-700/50 shadow-2xl shadow-black/50 overflow-hidden touch-none"
       >
-        {/* Grid */}
+        {/* Background Image (hidden, revealed by cells) */}
+        {(gameState === 'playing' || gameState === 'paused' || gameState === 'levelcomplete') && (
+          <div className="absolute inset-0 p-2">
+            <div 
+              className="w-full h-full grid gap-0"
+              style={{
+                gridTemplateColumns: `repeat(${gridSize}, 1fr)`,
+                gridTemplateRows: `repeat(${gridSize}, 1fr)`,
+              }}
+            >
+              {Array.from({ length: gridSize * gridSize }).map((_, index) => {
+                const x = index % gridSize;
+                const y = Math.floor(index / gridSize);
+                const key = `${x},${y}`;
+                const isRevealed = revealedCells.has(key);
+                
+                return (
+                  <div
+                    key={index}
+                    className="p-[1px] aspect-square"
+                  >
+                    <div 
+                      className={`w-full h-full transition-all duration-500 ${
+                        isRevealed ? 'opacity-100 scale-100' : 'opacity-0 scale-90'
+                      }`}
+                      style={{
+                        backgroundImage: `url(${currentLevelImage})`,
+                        backgroundSize: `${gridSize * 100}% ${gridSize * 100}%`,
+                        backgroundPosition: `${(x / (gridSize - 1)) * 100}% ${(y / (gridSize - 1)) * 100}%`,
+                        borderRadius: '2px',
+                      }}
+                    />
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
+        {/* Game Grid (snake, food, power-ups) */}
         <div
-          className="w-full h-full grid gap-0 p-2"
+          className="relative w-full h-full grid gap-0 p-2"
           style={{
             gridTemplateColumns: `repeat(${gridSize}, 1fr)`,
             gridTemplateRows: `repeat(${gridSize}, 1fr)`,
@@ -237,8 +297,8 @@ function App() {
             </div>
             <h2 className="text-2xl font-bold text-white mb-2">Ready to Play?</h2>
             <p className="text-slate-400 text-sm mb-6 text-center px-8">
-              The snake wraps around edges — don't bite yourself! 🍎<br/>
-              Collect power-ups for special abilities! ✨
+              Eat apples to reveal the hidden image!<br/>
+              Complete the picture to advance to the next level 🖼️
             </p>
             <button
               onClick={startGame}
@@ -273,13 +333,47 @@ function App() {
           </div>
         )}
 
+        {/* Overlay for level complete */}
+        {gameState === 'levelcomplete' && (
+          <div className="absolute inset-0 bg-slate-900/90 backdrop-blur-sm flex flex-col items-center justify-center rounded-2xl animate-fade-in">
+            <div className="text-5xl mb-4">🎉</div>
+            <h2 className="text-3xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-amber-400 to-yellow-300 mb-4">
+              Level {level} Complete!
+            </h2>
+            
+            {/* Show full image */}
+            <div className="w-64 h-64 mb-6 rounded-xl overflow-hidden border-4 border-amber-400 shadow-2xl shadow-amber-400/30">
+              <img 
+                src={currentLevelImage} 
+                alt={`Level ${level} complete`}
+                className="w-full h-full object-cover"
+              />
+            </div>
+            
+            <p className="text-slate-300 text-lg mb-4">
+              Score: <span className="font-bold text-emerald-400">{score}</span>
+            </p>
+            
+            <button
+              onClick={nextLevel}
+              className="px-8 py-3 bg-gradient-to-r from-amber-500 to-yellow-500 text-white font-bold rounded-xl hover:scale-105 active:scale-95 transition-transform shadow-lg shadow-amber-500/30"
+            >
+              Next Level →
+            </button>
+            <p className="text-slate-500 text-xs mt-3">or press Enter</p>
+          </div>
+        )}
+
         {/* Overlay for game over */}
         {gameState === 'gameover' && (
           <div className="absolute inset-0 bg-slate-900/85 backdrop-blur-sm flex flex-col items-center justify-center rounded-2xl animate-fade-in">
             <div className="text-5xl mb-4">💀</div>
             <h2 className="text-2xl font-bold text-rose-400 mb-2">Game Over!</h2>
             <p className="text-slate-300 text-lg mb-1">
-              Apples eaten: <span className="font-bold text-emerald-400">{Math.floor(score / 10)}</span> 🍎
+              Level reached: <span className="font-bold text-cyan-400">{level}</span>
+            </p>
+            <p className="text-slate-300 text-lg mb-1">
+              Image revealed: <span className="font-bold text-emerald-400">{progress}%</span>
             </p>
             <p className="text-slate-300 text-lg mb-1">Score: <span className="font-bold text-emerald-400">{score}</span></p>
             {score >= highScore && score > 0 && (
@@ -342,9 +436,6 @@ function App() {
         <div className="flex items-center justify-center gap-3 text-xs text-slate-400 mt-2">
           <span className="flex items-center gap-1">
             <span className="text-blue-400">🐢</span> Slow
-          </span>
-          <span className="flex items-center gap-1">
-            <span className="text-yellow-400">🛡️</span> Shield
           </span>
           <span className="flex items-center gap-1">
             <span className="text-pink-400">❤️</span> Life

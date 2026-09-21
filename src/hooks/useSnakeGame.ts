@@ -2,17 +2,17 @@ import { useState, useCallback, useEffect, useRef } from 'react';
 
 export type Direction = 'UP' | 'DOWN' | 'LEFT' | 'RIGHT';
 export type Position = { x: number; y: number };
-export type GameState = 'idle' | 'playing' | 'paused' | 'gameover';
+export type GameState = 'idle' | 'playing' | 'paused' | 'gameover' | 'levelcomplete';
 export type Difficulty = 'easy' | 'medium' | 'hard';
 
-export type PowerUpType = 'slow' | 'shield' | 'life' | 'bonus';
+export type PowerUpType = 'slow' | 'life' | 'bonus';
 
 export interface PowerUp {
   id: number;
   type: PowerUpType;
   position: Position;
   spawnTime: number;
-  duration: number; // How long it stays on field
+  duration: number;
 }
 
 export interface ActiveEffect {
@@ -28,10 +28,9 @@ const SPEED_MAP: Record<Difficulty, number> = {
   hard: 75,
 };
 
-const POWERUP_DURATION = 8000; // Power-up stays on field for 8 seconds
-const SLOW_EFFECT_DURATION = 5000; // Slow effect lasts 5 seconds
-const SHIELD_EFFECT_DURATION = 6000; // Shield lasts 6 seconds
-const POWERUP_SPAWN_CHANCE = 0.35; // 35% chance to spawn power-up after eating apple
+const POWERUP_DURATION = 8000;
+const SLOW_EFFECT_DURATION = 5000;
+const POWERUP_SPAWN_CHANCE = 0.35;
 
 function getRandomPosition(exclude: Position[]): Position {
   let pos: Position;
@@ -72,6 +71,8 @@ export function useSnakeGame() {
   const [activeEffects, setActiveEffects] = useState<ActiveEffect[]>([]);
   const [lives, setLives] = useState(1);
   const [lastEaten, setLastEaten] = useState<number>(0);
+  const [level, setLevel] = useState(1);
+  const [revealedCells, setRevealedCells] = useState<Set<string>>(new Set());
 
   const directionRef = useRef<Direction>('RIGHT');
   const nextDirectionRef = useRef<Direction | null>(null);
@@ -82,10 +83,10 @@ export function useSnakeGame() {
   const powerUpsRef = useRef<PowerUp[]>([]);
   const activeEffectsRef = useRef<ActiveEffect[]>([]);
   const livesRef = useRef(1);
+  const revealedCellsRef = useRef<Set<string>>(new Set());
   const intervalRef = useRef<number | null>(null);
   const powerUpIdRef = useRef(0);
 
-  // Keep refs in sync
   useEffect(() => { gameStateRef.current = gameState; }, [gameState]);
   useEffect(() => { snakeRef.current = snake; }, [snake]);
   useEffect(() => { foodRef.current = food; }, [food]);
@@ -93,17 +94,13 @@ export function useSnakeGame() {
   useEffect(() => { powerUpsRef.current = powerUps; }, [powerUps]);
   useEffect(() => { activeEffectsRef.current = activeEffects; }, [activeEffects]);
   useEffect(() => { livesRef.current = lives; }, [lives]);
+  useEffect(() => { revealedCellsRef.current = revealedCells; }, [revealedCells]);
 
   const clearGameLoop = useCallback(() => {
     if (intervalRef.current !== null) {
       clearInterval(intervalRef.current);
       intervalRef.current = null;
     }
-  }, []);
-
-  const hasEffect = useCallback((type: PowerUpType): boolean => {
-    const now = Date.now();
-    return activeEffectsRef.current.some(e => e.type === type && e.expiresAt > now);
   }, []);
 
   const addEffect = useCallback((type: PowerUpType, duration: number) => {
@@ -117,10 +114,9 @@ export function useSnakeGame() {
   }, []);
 
   const spawnPowerUp = useCallback(() => {
-    const types: PowerUpType[] = ['slow', 'shield', 'life', 'bonus'];
-    const weights = [0.35, 0.3, 0.15, 0.2]; // Probability weights
+    const types: PowerUpType[] = ['slow', 'life', 'bonus'];
+    const weights = [0.4, 0.2, 0.4];
     
-    // Weighted random selection
     const random = Math.random();
     let cumulative = 0;
     let selectedType: PowerUpType = 'slow';
@@ -151,6 +147,43 @@ export function useSnakeGame() {
     });
   }, []);
 
+  const revealRandomCell = useCallback(() => {
+    const totalCells = GRID_SIZE * GRID_SIZE;
+    const allCells: string[] = [];
+    
+    for (let y = 0; y < GRID_SIZE; y++) {
+      for (let x = 0; x < GRID_SIZE; x++) {
+        const key = `${x},${y}`;
+        if (!revealedCellsRef.current.has(key)) {
+          allCells.push(key);
+        }
+      }
+    }
+
+    if (allCells.length === 0) return false;
+
+    const randomCell = allCells[Math.floor(Math.random() * allCells.length)];
+    
+    setRevealedCells(prev => {
+      const updated = new Set(prev);
+      updated.add(randomCell);
+      revealedCellsRef.current = updated;
+      return updated;
+    });
+
+    return true;
+  }, []);
+
+  const checkLevelComplete = useCallback(() => {
+    const totalCells = GRID_SIZE * GRID_SIZE;
+    if (revealedCellsRef.current.size >= totalCells) {
+      setGameState('levelcomplete');
+      clearGameLoop();
+      return true;
+    }
+    return false;
+  }, [clearGameLoop]);
+
   const tick = useCallback(() => {
     if (gameStateRef.current !== 'playing') return;
 
@@ -165,7 +198,6 @@ export function useSnakeGame() {
     const currentFood = foodRef.current;
     const head = currentSnake[0];
 
-    // Calculate new head position
     let newHead: Position;
     switch (currentDirection) {
       case 'UP':
@@ -182,34 +214,22 @@ export function useSnakeGame() {
         break;
     }
 
-    // Wrap around walls
     newHead = {
       x: (newHead.x + GRID_SIZE) % GRID_SIZE,
       y: (newHead.y + GRID_SIZE) % GRID_SIZE,
     };
 
-    // Check self collision
     const willEat = newHead.x === currentFood.x && newHead.y === currentFood.y;
     const bodyToCheck = willEat ? currentSnake : currentSnake.slice(0, -1);
     const hitSelf = bodyToCheck.some(seg => seg.x === newHead.x && seg.y === newHead.y);
 
     if (hitSelf) {
-      // Check if shield is active
-      if (hasEffect('shield')) {
-        // Remove shield and continue
-        setActiveEffects(prev => {
-          const updated = prev.filter(e => e.type !== 'shield');
-          activeEffectsRef.current = updated;
-          return updated;
-        });
-      } else if (livesRef.current > 1) {
-        // Use extra life
+      if (livesRef.current > 1) {
         setLives(prev => {
           const updated = prev - 1;
           livesRef.current = updated;
           return updated;
         });
-        // Reset snake to initial position
         const initialSnake = getInitialSnake();
         setSnake(initialSnake);
         snakeRef.current = initialSnake;
@@ -220,20 +240,17 @@ export function useSnakeGame() {
         powerUpsRef.current = [];
         return;
       } else {
-        // Game over
         setGameState('gameover');
         clearGameLoop();
         return;
       }
     }
 
-    // Build new snake
     const newSnake = [newHead, ...currentSnake];
     if (!willEat) {
       newSnake.pop();
     }
 
-    // Update state
     setSnake(newSnake);
     snakeRef.current = newSnake;
 
@@ -244,7 +261,6 @@ export function useSnakeGame() {
       scoreRef.current = newScore;
       setLastEaten(Date.now());
 
-      // Update high score
       setHighScore(prev => {
         if (newScore > prev) {
           try {
@@ -255,36 +271,36 @@ export function useSnakeGame() {
         return prev;
       });
 
-      // Generate new food
+      // Reveal a random cell
+      revealRandomCell();
+
+      // Check if level is complete
+      setTimeout(() => {
+        checkLevelComplete();
+      }, 100);
+
       const newFood = getRandomPosition(newSnake);
       setFood(newFood);
       foodRef.current = newFood;
 
-      // Chance to spawn power-up
       if (Math.random() < POWERUP_SPAWN_CHANCE) {
         spawnPowerUp();
       }
     } else {
-      // Check if snake picked up a power-up
       const pickedUp = powerUpsRef.current.find(p => 
         p.position.x === newHead.x && p.position.y === newHead.y
       );
 
       if (pickedUp) {
-        // Remove power-up from field
         setPowerUps(prev => {
           const updated = prev.filter(p => p.id !== pickedUp.id);
           powerUpsRef.current = updated;
           return updated;
         });
 
-        // Apply effect
         switch (pickedUp.type) {
           case 'slow':
             addEffect('slow', SLOW_EFFECT_DURATION);
-            break;
-          case 'shield':
-            addEffect('shield', SHIELD_EFFECT_DURATION);
             break;
           case 'life':
             setLives(prev => {
@@ -312,7 +328,6 @@ export function useSnakeGame() {
       }
     }
 
-    // Clean up expired power-ups from field
     const now = Date.now();
     const expiredPowerUps = powerUpsRef.current.filter(p => now - p.spawnTime > p.duration);
     if (expiredPowerUps.length > 0) {
@@ -323,7 +338,6 @@ export function useSnakeGame() {
       });
     }
 
-    // Clean up expired effects
     const expiredEffects = activeEffectsRef.current.filter(e => e.expiresAt <= now);
     if (expiredEffects.length > 0) {
       setActiveEffects(prev => {
@@ -332,19 +346,18 @@ export function useSnakeGame() {
         return updated;
       });
     }
-  }, [clearGameLoop, hasEffect, addEffect, spawnPowerUp]);
+  }, [clearGameLoop, addEffect, spawnPowerUp, revealRandomCell, checkLevelComplete]);
 
   const startGameLoop = useCallback(() => {
     clearGameLoop();
     let speed = SPEED_MAP[difficulty];
     
-    // Apply slow effect
-    if (hasEffect('slow')) {
+    if (activeEffectsRef.current.some(e => e.type === 'slow' && e.expiresAt > Date.now())) {
       speed = Math.floor(speed * 1.8);
     }
     
     intervalRef.current = window.setInterval(tick, speed);
-  }, [difficulty, tick, clearGameLoop, hasEffect]);
+  }, [difficulty, tick, clearGameLoop]);
 
   const startGame = useCallback(() => {
     clearGameLoop();
@@ -366,6 +379,31 @@ export function useSnakeGame() {
     activeEffectsRef.current = [];
     setLives(1);
     livesRef.current = 1;
+    setLevel(1);
+    setRevealedCells(new Set());
+    revealedCellsRef.current = new Set();
+    setGameState('playing');
+  }, [clearGameLoop]);
+
+  const nextLevel = useCallback(() => {
+    clearGameLoop();
+    const initialSnake = getInitialSnake();
+    const initialFood = getRandomPosition(initialSnake);
+
+    setSnake(initialSnake);
+    snakeRef.current = initialSnake;
+    setFood(initialFood);
+    foodRef.current = initialFood;
+    setDirection('RIGHT');
+    directionRef.current = 'RIGHT';
+    nextDirectionRef.current = null;
+    setPowerUps([]);
+    powerUpsRef.current = [];
+    setActiveEffects([]);
+    activeEffectsRef.current = [];
+    setRevealedCells(new Set());
+    revealedCellsRef.current = new Set();
+    setLevel(prev => prev + 1);
     setGameState('playing');
   }, [clearGameLoop]);
 
@@ -400,7 +438,6 @@ export function useSnakeGame() {
     setDifficulty(newDifficulty);
   }, []);
 
-  // Start/stop game loop based on game state and effects
   useEffect(() => {
     if (gameState === 'playing') {
       startGameLoop();
@@ -410,7 +447,6 @@ export function useSnakeGame() {
     return clearGameLoop;
   }, [gameState, startGameLoop, clearGameLoop]);
 
-  // Restart game loop when effects change
   useEffect(() => {
     if (gameState === 'playing') {
       startGameLoop();
@@ -430,9 +466,12 @@ export function useSnakeGame() {
     powerUps,
     activeEffects,
     lives,
+    level,
+    revealedCells,
     startGame,
     togglePause,
     restart,
+    nextLevel,
     changeDirection,
     changeDifficulty,
   };
