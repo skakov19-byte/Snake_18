@@ -22,10 +22,13 @@ export interface ActiveEffect {
 
 const GRID_SIZE = 20;
 
-const SPEED_MAP: Record<Difficulty, number> = {
-  easy: 180,
-  medium: 120,
-  hard: 75,
+const BASE_SPEED = 120; // Constant speed for all difficulties
+
+// Cells revealed per apple based on difficulty
+const CELLS_REVEALED_MAP: Record<Difficulty, number> = {
+  easy: 64,   // 8x8 grid
+  medium: 16, // 4x4 grid
+  hard: 1,    // 1 cell
 };
 
 // Default level images
@@ -285,8 +288,8 @@ export function useSnakeGame() {
         return prev;
       });
 
-      // Reveal 1 cell for regular apple (10 points)
-      revealRandomCells(1);
+      // Reveal cells based on difficulty for regular apple (10 points)
+      revealRandomCells(CELLS_REVEALED_MAP[difficulty]);
 
       // Check if level is complete
       setTimeout(() => {
@@ -337,8 +340,8 @@ export function useSnakeGame() {
               }
               return prev;
             });
-            // Reveal 5 cells for golden apple (50 points)
-            revealRandomCells(5);
+            // Reveal cells based on difficulty for golden apple (50 points)
+            revealRandomCells(CELLS_REVEALED_MAP[difficulty] * 5);
             setTimeout(() => {
               checkLevelComplete();
             }, 100);
@@ -369,14 +372,14 @@ export function useSnakeGame() {
 
   const startGameLoop = useCallback(() => {
     clearGameLoop();
-    let speed = SPEED_MAP[difficulty];
+    let speed = BASE_SPEED;
     
     if (activeEffectsRef.current.some(e => e.type === 'slow' && e.expiresAt > Date.now())) {
       speed = Math.floor(speed * 1.8);
     }
     
     intervalRef.current = window.setInterval(tick, speed);
-  }, [difficulty, tick, clearGameLoop]);
+  }, [tick, clearGameLoop]);
 
   const startGame = useCallback(() => {
     clearGameLoop();

@@ -326,8 +326,9 @@ function App() {
             </div>
             <h2 className="text-2xl font-bold text-white mb-2">Ready to Play?</h2>
             <p className="text-slate-400 text-sm mb-4 text-center px-8">
-              🍎 Regular apple = 1 cell revealed<br/>
-              ⭐ Golden apple = 5 cells revealed!<br/>
+              🍎 Regular apple reveals cells based on difficulty<br/>
+              ⭐ Golden apple reveals 5x more cells!<br/>
+              🟢 Easy: 64 cells | 🟡 Medium: 16 cells | 🔴 Hard: 1 cell<br/>
               Complete the picture to advance 🖼️
             </p>
             <p className="text-purple-400 text-xs mb-4 text-center">
@@ -508,31 +509,37 @@ function App() {
         </div>
 
         {/* Difficulty Selector */}
-        <div className="flex items-center justify-center gap-2">
-          <span className="text-xs text-slate-400 mr-2 uppercase tracking-wider">Difficulty:</span>
-          {difficulties.map(d => (
-            <button
-              key={d.value}
-              onClick={() => changeDifficulty(d.value)}
-              disabled={gameState === 'playing'}
-              className={`px-4 py-1.5 rounded-lg text-sm font-medium transition-all ${
-                difficulty === d.value
-                  ? `${d.color} text-white shadow-lg scale-105`
-                  : 'bg-slate-700/50 text-slate-400 hover:bg-slate-700 border border-slate-600/50'
-              } ${gameState === 'playing' ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
-            >
-              {d.label}
-            </button>
-          ))}
+        <div className="flex flex-col items-center gap-2">
+          <span className="text-xs text-slate-400 uppercase tracking-wider">Difficulty (cells per apple):</span>
+          <div className="flex items-center gap-2">
+            {difficulties.map(d => {
+              const cellsPerApple = d.value === 'easy' ? 64 : d.value === 'medium' ? 16 : 1;
+              return (
+                <button
+                  key={d.value}
+                  onClick={() => changeDifficulty(d.value)}
+                  disabled={gameState === 'playing'}
+                  className={`px-4 py-1.5 rounded-lg text-sm font-medium transition-all ${
+                    difficulty === d.value
+                      ? `${d.color} text-white shadow-lg scale-105`
+                      : 'bg-slate-700/50 text-slate-400 hover:bg-slate-700 border border-slate-600/50'
+                  } ${gameState === 'playing' ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
+                >
+                  <div>{d.label}</div>
+                  <div className="text-xs opacity-75">{cellsPerApple} cells</div>
+                </button>
+              );
+            })}
+          </div>
         </div>
 
         {/* Power-ups Legend */}
         <div className="flex items-center justify-center gap-3 text-xs text-slate-400 mt-2">
           <span className="flex items-center gap-1">
-            <span className="text-red-400">🍎</span> = 1 cell
+            <span className="text-red-400">🍎</span> = {difficulty === 'easy' ? 64 : difficulty === 'medium' ? 16 : 1} cells
           </span>
           <span className="flex items-center gap-1">
-            <span className="text-amber-400">⭐</span> = 5 cells
+            <span className="text-amber-400">⭐</span> = {difficulty === 'easy' ? 320 : difficulty === 'medium' ? 80 : 5} cells
           </span>
           <span className="flex items-center gap-1">
             <span className="text-blue-400">🐢</span> Slow
