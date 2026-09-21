@@ -83,7 +83,9 @@ export function useSnakeGame() {
   const [lastEaten, setLastEaten] = useState<number>(0);
   const [level, setLevel] = useState(1);
   const [revealedCells, setRevealedCells] = useState<Set<string>>(new Set());
-  const [customImages, setCustomImages] = useState<string[]>(() => {
+  // Custom images stored as array indexed by level (0 = level 1, 1 = level 2, etc.)
+  // null/undefined means use default for that level
+  const [customImages, setCustomImages] = useState<(string | null)[]>(() => {
     try {
       const saved = localStorage.getItem('snake-custom-images');
       return saved ? JSON.parse(saved) : [];
@@ -460,9 +462,14 @@ export function useSnakeGame() {
     setDifficulty(newDifficulty);
   }, []);
 
-  const addCustomImage = useCallback((imageDataUrl: string) => {
+  const setCustomImageForLevel = useCallback((levelIndex: number, imageDataUrl: string | null) => {
     setCustomImages(prev => {
-      const updated = [...prev, imageDataUrl];
+      const updated = [...prev];
+      // Extend array if needed
+      while (updated.length <= levelIndex) {
+        updated.push(null);
+      }
+      updated[levelIndex] = imageDataUrl;
       try {
         localStorage.setItem('snake-custom-images', JSON.stringify(updated));
       } catch { /* ignore */ }
@@ -481,12 +488,24 @@ export function useSnakeGame() {
   }, []);
 
   const getAllLevelImages = useCallback(() => {
-    // If custom images exist, use only them (starting from level 1)
-    // Otherwise, use default images
-    if (customImages.length > 0) {
-      return customImages;
+    // Combine defaults with custom images
+    // For each level, use custom image if exists, otherwise use default
+    const maxLevels = Math.max(DEFAULT_LEVEL_IMAGES.length, customImages.length);
+    const result: string[] = [];
+    
+    for (let i = 0; i < maxLevels; i++) {
+      const customImage = customImages[i];
+      const defaultImage = DEFAULT_LEVEL_IMAGES[i];
+      
+      // Use custom if exists, otherwise use default if exists
+      if (customImage) {
+        result.push(customImage);
+      } else if (defaultImage) {
+        result.push(defaultImage);
+      }
     }
-    return DEFAULT_LEVEL_IMAGES;
+    
+    return result;
   }, [customImages]);
 
   useEffect(() => {
@@ -527,7 +546,6 @@ export function useSnakeGame() {
     nextLevel,
     changeDirection,
     changeDifficulty,
-    addCustomImage,
-    removeCustomImage,
+    setCustomImageForLevel,
   };
 }

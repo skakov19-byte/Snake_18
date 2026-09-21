@@ -34,11 +34,11 @@ function App() {
     nextLevel,
     changeDirection,
     changeDifficulty,
-    addCustomImage,
-    removeCustomImage,
+    setCustomImageForLevel,
   } = useSnakeGame();
 
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const currentEditLevelRef = useRef<number>(0);
 
   const touchRef = useTouchControls(changeDirection, gameState === 'playing');
 
@@ -96,10 +96,12 @@ function App() {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [handleKeyDown]);
 
-  // Handle image upload
+  // Handle image upload for specific level
   const handleImageUpload = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
+
+    const levelIndex = currentEditLevelRef.current;
 
     // Check file type
     if (!file.type.startsWith('image/')) {
@@ -116,7 +118,7 @@ function App() {
     const reader = new FileReader();
     reader.onload = (event) => {
       const result = event.target?.result as string;
-      addCustomImage(result);
+      setCustomImageForLevel(levelIndex, result);
     };
     reader.readAsDataURL(file);
 
@@ -124,7 +126,7 @@ function App() {
     if (fileInputRef.current) {
       fileInputRef.current.value = '';
     }
-  }, [addCustomImage]);
+  }, [setCustomImageForLevel]);
 
   const getPowerUpComponent = (type: PowerUpType) => {
     switch (type) {
@@ -333,7 +335,7 @@ function App() {
               Complete the picture 🖼️
             </p>
             <p className="text-purple-400 text-[10px] md:text-xs mb-2 md:mb-4 text-center">
-              🎨 {allLevelImages.length} levels!
+              🎨 {allLevelImages.length} {allLevelImages.length === 1 ? 'level' : 'levels'} available
             </p>
             <button
               onClick={startGame}
@@ -431,61 +433,80 @@ function App() {
         {/* Custom Images Section - Desktop only */}
         {(gameState === 'idle' || gameState === 'gameover') && (
           <div className="hidden md:block bg-slate-800/80 backdrop-blur rounded-xl p-4 border border-slate-700/50">
-            <div className="flex items-center justify-between mb-3">
-              <h3 className="text-sm font-medium text-slate-300">📸 Level Images</h3>
-              <label className="px-3 py-1.5 bg-gradient-to-r from-purple-500 to-pink-500 text-white text-xs font-medium rounded-lg cursor-pointer hover:scale-105 active:scale-95 transition-transform">
-                + Add Image
-                <input
-                  ref={fileInputRef}
-                  type="file"
-                  accept="image/*"
-                  onChange={handleImageUpload}
-                  className="hidden"
-                />
-              </label>
-            </div>
+            <h3 className="text-sm font-medium text-slate-300 mb-3">📸 Level Images (click to change)</h3>
             
-            {customImages.length > 0 ? (
-              <>
-                <p className="text-xs text-purple-400 mb-2">✨ Using your custom images</p>
-                <div className="grid grid-cols-4 gap-2">
-                  {customImages.map((img, index) => (
-                    <div key={index} className="relative group aspect-square rounded-lg overflow-hidden border-2 border-purple-500/50">
-                      <img src={img} alt={`Custom ${index + 1}`} className="w-full h-full object-cover" />
+            <div className="grid grid-cols-4 gap-2">
+              {allLevelImages.map((img, index) => {
+                const isCustom = customImages[index] != null;
+                return (
+                  <div key={index} className="relative group">
+                    <label className="block cursor-pointer">
+                      <input
+                        type="file"
+                        accept="image/*"
+                        onChange={(e) => {
+                          currentEditLevelRef.current = index;
+                          handleImageUpload(e as any);
+                        }}
+                        className="hidden"
+                      />
+                      <div className={`aspect-square rounded-lg overflow-hidden border-2 transition-all ${
+                        isCustom ? 'border-purple-500/50 hover:border-purple-400' : 'border-slate-600 hover:border-slate-400'
+                      }`}>
+                        <img src={img} alt={`Level ${index + 1}`} className="w-full h-full object-cover" />
+                        {/* Hover overlay */}
+                        <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                          <span className="text-white text-xs font-medium">Change</span>
+                        </div>
+                      </div>
+                      <div className="absolute bottom-0 left-0 right-0 bg-black/70 text-white text-xs text-center py-0.5 font-medium">
+                        Level {index + 1}
+                      </div>
+                      {isCustom && (
+                        <div className="absolute top-0 right-0 bg-purple-500 text-white text-[10px] px-1 rounded-bl">
+                          Custom
+                        </div>
+                      )}
+                    </label>
+                    {isCustom && (
                       <button
-                        onClick={() => removeCustomImage(index)}
-                        className="absolute top-1 right-1 w-5 h-5 bg-red-500 text-white text-xs rounded-full opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center"
+                        onClick={(e) => {
+                          e.preventDefault();
+                          setCustomImageForLevel(index, null);
+                        }}
+                        className="absolute top-1 right-1 w-5 h-5 bg-red-500 text-white text-xs rounded-full opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center z-10"
+                        title="Reset to default"
                       >
                         ×
                       </button>
-                      <div className="absolute bottom-0 left-0 right-0 bg-black/70 text-white text-xs text-center py-0.5 font-medium">
-                        Level {index + 1}
-                      </div>
-                    </div>
-                  ))}
+                    )}
+                  </div>
+                );
+              })}
+              
+              {/* Add new level button */}
+              <label className="block cursor-pointer">
+                <input
+                  type="file"
+                  accept="image/*"
+                  onChange={(e) => {
+                    currentEditLevelRef.current = allLevelImages.length;
+                    handleImageUpload(e as any);
+                  }}
+                  className="hidden"
+                />
+                <div className="aspect-square rounded-lg border-2 border-dashed border-slate-600 hover:border-purple-500 flex items-center justify-center transition-colors">
+                  <div className="text-center">
+                    <div className="text-2xl text-slate-500">+</div>
+                    <div className="text-[10px] text-slate-500">Add Level</div>
+                  </div>
                 </div>
-                <p className="text-xs text-slate-500 mt-2 text-center">
-                  Delete all to use default images
-                </p>
-              </>
-            ) : (
-              <>
-                <p className="text-xs text-slate-400 mb-2">🎮 Using default images</p>
-                <div className="grid grid-cols-3 gap-2">
-                  {DEFAULT_LEVEL_IMAGES.map((img, index) => (
-                    <div key={index} className="relative aspect-square rounded-lg overflow-hidden border border-slate-600">
-                      <img src={img} alt={`Default ${index + 1}`} className="w-full h-full object-cover" />
-                      <div className="absolute bottom-0 left-0 right-0 bg-black/70 text-white text-xs text-center py-0.5 font-medium">
-                        Level {index + 1}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-                <p className="text-xs text-slate-500 mt-2 text-center">
-                  Add your own images to replace defaults
-                </p>
-              </>
-            )}
+              </label>
+            </div>
+            
+            <p className="text-xs text-slate-500 mt-2 text-center">
+              Click any image to change it • Hover to see options
+            </p>
           </div>
         )}
 
